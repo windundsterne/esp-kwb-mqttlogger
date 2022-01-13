@@ -20,8 +20,8 @@
 #define MQNAME "kwb"
 
 // Ende Individualisierungen
-
-#include "../includes/conf.h"
+// auskommentieren und Einstellungen oben ändern
+#include "c:\tmp\espconf.h"
 
 
 
