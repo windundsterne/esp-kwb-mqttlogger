@@ -23,8 +23,6 @@
 // auskommentieren und Einstellungen oben ändern
 #include "c:\tmp\espconf.h"
 
-
-
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
@@ -39,6 +37,14 @@
 #define MSG_TYPE_SENSE 2
 #define FALSE 0
 #define TRUE 1
+#define RX        2    //4 // D3    //Serial Receive pin
+// Aktuell ist der nicht angeschlossen, da  nicht
+// gesteuert werden soll
+#define TX        4    //2 // 2 // D4    //Serial Transmit pin
+#define RTS_pin   5 // D1    //RS485 Direction control
+#define RS485Transmit    HIGH
+#define RS485Receive     LOW
+
 
 const char* mqtt_server = MQTTSERVER; // IP des MQTT Servers - z.B. fhem
 const char* ssid = STASSID;
@@ -121,14 +127,6 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 #include <SoftwareSerial.h>  // https://github.com/PaulStoffregen/SoftwareSerial
-
-#define RX        2    //4 // D3    //Serial Receive pin
-// Aktuell ist der nicht angeschlossen, da  nicht
-// gesteuert werden soll
-#define TX        4    //2 // 2 // D4    //Serial Transmit pin
-#define RTS_pin   5 // D1    //RS485 Direction control
-#define RS485Transmit    HIGH
-#define RS485Receive     LOW
 
 SoftwareSerial RS485Serial(RX, TX);
 
