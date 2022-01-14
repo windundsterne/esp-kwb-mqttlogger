@@ -9,7 +9,7 @@ Damit können neben den aktuellen Verbrauchsswerten auch Störungen und der Gesa
 
 Aktuell sind dies:
 
-<Bildfhem>![fhemwerte.png?raw=true](https://github.com/windundsterne/esp-kwb-mqttlogger/blob/main/Bilder/)
+<Bildfhem>![fhemwerte.png](https://github.com/windundsterne/esp-kwb-mqttlogger/blob/main/Bilder/fhemwerte.png?raw=true)
 
 Die Daten können verwendet werden, um nette Graphen oder auch Alarme zu generieren
 
