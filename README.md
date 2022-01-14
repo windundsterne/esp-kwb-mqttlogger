@@ -28,5 +28,7 @@ Arduiono Programm (C++) esp-kwb-mqttlogger. Dieses liest die Daten kontinuierlic
 Die Verdrahtung ist recht simpel, über den Modbus des Kessels liest  der MAX485 Werte, damit er die Kesselsteuerung nicht verwirrt, im Grunde könnte man damit aber auch Steuern…. 
 
 Materialkosten liegen bei ca. 15€ 
+  
+Großen Dank an die Vorarbeit von Dirk Abel im Forum: https://www.mikrocontroller.net/topic/274137 aus dessen Protokollbeschreibung viele Werte übernommen werden konnte. 
 
 Viel Spaß beim basteln
