@@ -13,8 +13,8 @@ Aktuell sind dies:
 
 Die Daten können verwendet werden, um nette Graphen oder auch Alarme zu generieren
 
-<WERTE Fhem>
-
+<Bildftui>![ftuigraph.png](https://github.com/windundsterne/esp-kwb-mqttlogger/blob/main/Bilder/ftuigraph.png?raw=true)
+    
 ## Hardware:
 
 * wemos d1 min pro 
