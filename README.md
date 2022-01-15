@@ -26,6 +26,10 @@ Der Kessel verfügt schon über einen entsprechenden RS485 Stecker, der auch die
 
 Materialkosten liegen bei ca. 15€ 
 
+<Bildlogger>!PXL_20201004_160445885.jpg (https://github.com/windundsterne/esp-kwb-mqttlogger/blob/main/Bilder/PXL_20201004_160445885.jpg?raw=true)
+PXL_20201004_160445885
+
+
 ## Software:
 
 Arduiono Programm (C++) esp-kwb-mqttlogger. Dieses liest die Daten kontinuierlich über den RS485 des Kessels ein und überträgt die per WLAN an den MQTT-FHEM.
