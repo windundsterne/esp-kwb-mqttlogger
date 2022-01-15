@@ -26,8 +26,7 @@ Der Kessel verfügt schon über einen entsprechenden RS485 Stecker, der auch die
 
 Materialkosten liegen bei ca. 15€ 
 
-<Bildlogger>!PXL_20201004_160445885.jpg (https://github.com/windundsterne/esp-kwb-mqttlogger/blob/main/Bilder/PXL_20201004_160445885.jpg?raw=true)
-PXL_20201004_160445885
+<Bildlogger>![PXL_20201004_160445885.jpg] (https://github.com/windundsterne/esp-kwb-mqttlogger/blob/main/Bilder/PXL_20201004_160445885.jpg?raw=true)
 
 
 ## Software:
