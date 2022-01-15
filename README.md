@@ -22,22 +22,19 @@ Die Daten können verwendet werden, um nette Graphen oder auch Alarme zu generie
 * TL7800
     
 Die Verdrahtung ist recht simpel, über den Modbus des Kessels liest  der MAX485 Werte, damit er die Kesselsteuerung nicht verwirrt, im Grunde könnte man damit aber auch Steuern…. 
-Der Kessel verfügt schon über einen entsprechenden RS485 Stecker, der auch die 24V Versortungspannung liefert. Diese wird mit einem 7800 und einem kleinen Kühlkörper für den Webmos und den MX485 angepasst.
+Der Kessel verfügt schon über einen entsprechenden RS485 Stecker, der auch die 24V Versorgungspannung liefert. Diese wird mit einem TL7800 und einem kleinen Kühlkörper für den Webmos und den MX485 angepasst.
 
 Materialkosten liegen bei ca. 15€ 
 
-<Bildlogger>!PXL_20201004_160445885.jpg (https://github.com/windundsterne/esp-kwb-mqttlogger/blob/main/Bilder/PXL_20201004_160445885.jpg?raw=true)
-PXL_20201004_160445885
-
+<Bildlogger>![PXL_20201004_160445885.jpg](https://github.com/windundsterne/esp-kwb-mqttlogger/blob/main/Bilder/PXL_20201004_160445885.jpg?raw=true)
 
 ## Software:
 
 Arduiono Programm (C++) esp-kwb-mqttlogger. Dieses liest die Daten kontinuierlich über den RS485 des Kessels ein und überträgt die per WLAN an den MQTT-FHEM.
 Es untersützt einen OTA-Update. 
 
-Nach der Installation der entsprechenen Bibs die Zeile mit dem Include "conf.h" entfernen und oben im Code Wlan SSID und Passwort, MQTT IP anpassen.
-    
-      
+Nach der Installation der entsprechenen Bibs die  define am Anfang des Codes unter individualisierungen einkommentieren (Wlan SSID und Passwort, MQTT IP anpassen...) und auf den Webmos schreiben. 
+          
 Großen Dank an die Vorarbeit von Dirk Abel im Forum: https://www.mikrocontroller.net/topic/274137 aus dessen Protokollbeschreibung viele Werte übernommen werden konnte. 
 
 Viel Spaß beim basteln
