@@ -1,4 +1,4 @@
-// Author windundsternne V0.95
+// Author windundsternne V.0.99
 // Das Programm liest Control und Sense Daten vom Bus
 // fhem. Updates können OTA durchgeführt werden.
 // Ist bestimmt nicht fehlerfrei läuft aber seit einer Weile stabil
@@ -9,19 +9,27 @@
 // berechnet mit der der Pelletverbrauch bestimmt werden kann (ca. 4.3kg/kwh bei einem EF2)
 
 // Individualisierungen
+//#define OTAHOST "kwbeasyfire"     // unnter dem Namen  Netzwerkschnittstelle in der ArduionIDE
+//#define STASSID "MYSSID"          // Wlan SSID
+//#define STAPSK  "MYWLANPW"        // Wlan PW
+//#define MQTTSERVER "192.168.0.5"  // IP MQTT-Server
 
 
-#define OTAHOST "kwbeasyfire"     // unnter dem Namen  Netzwerkschnittstelle in der ArduionIDE
-#define STASSID "MYSSID"          // Wlan SSID
-#define STAPSK  "MYWLANPW"        // Wlan PW
-#define MQTTSERVER "192.168.0.5"  // IP MQTT-Server
 #define OUTTOPIC "kwb"
 #define INTOPIC "cmd"
 #define MQNAME "kwb"
 
+
+//  individuelle Konfig ausserhalb des GIT
+#ifndef OTAHOST|STASSID|STAPSK|MQTTSERVER
+#include "conf.h"
+#endif
+
+
+
+
 // Ende Individualisierungen
-// auskommentieren und Einstellungen oben ändern
-#include "c:\tmp\espconf.h"
+
 
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
