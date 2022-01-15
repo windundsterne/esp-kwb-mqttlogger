@@ -495,7 +495,9 @@ void loop() {
       sprintf(msg, "%d", (int)(((float)Kessel.Schneckengesamtlaufzeit* NAfaktor)  )); 
       
       client.publish("PelletsNA", msg);
-      
+
+      // Gesamtverbrauch in GR
+      client.publish("Pellets", msg);
 
       // akt Verbrauch berechnen
       if (Kessel.HauptantriebUD - UD)
