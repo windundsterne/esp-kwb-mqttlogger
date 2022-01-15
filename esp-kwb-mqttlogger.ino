@@ -9,23 +9,23 @@
 // berechnet mit der der Pelletverbrauch bestimmt werden kann (ca. 4.3kg/kwh bei einem EF2)
 
 // Individualisierungen
-//#define OTAHOST "kwbeasyfire"     // unnter dem Namen  Netzwerkschnittstelle in der ArduionIDE
+
 //#define STASSID "MYSSID"          // Wlan SSID
 //#define STAPSK  "MYWLANPW"        // Wlan PW
 //#define MQTTSERVER "192.168.0.5"  // IP MQTT-Server
 
 
-#define OUTTOPIC "kwb"
-#define INTOPIC "cmd"
-#define MQNAME "kwb"
-
-
 //  individuelle Konfig ausserhalb des GIT
-#ifndef OTAHOST|STASSID|STAPSK|MQTTSERVER
+#ifndef STASSID
 #include "conf.h"
 #endif
 
 
+
+#define OTAHOST "kwbeasyfire"     // unnter dem Namen  Netzwerkschnittstelle in der ArduionIDE
+#define OUTTOPIC "kwb"
+#define INTOPIC "cmd"
+#define MQNAME "kwb"
 
 
 // Ende Individualisierungen
