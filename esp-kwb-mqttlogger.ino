@@ -14,7 +14,6 @@
 //#define STAPSK  "MYWLANPW"        // Wlan PW
 //#define MQTTSERVER "192.168.0.5"  // IP MQTT-Server
 
-
 //  individuelle Konfig ausserhalb des GIT
 #ifndef STASSID
 #include "conf.h"
@@ -192,9 +191,9 @@ void setup() {
   });
 
   client.setServer(mqtt_server, 1883);
-  Serial.println("Ready");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
+  //Serial.println("Ready");
+  //Serial.print("IP address: ");
+  //Serial.println(WiFi.localIP());
 
   pinMode(RTS_pin, OUTPUT);
   pinMode(RX, INPUT);
@@ -230,6 +229,32 @@ void setup() {
     rec[r] = readbyte();
   }
 
+  // Speedtest
+
+  int ts=millis();
+  double x; 
+  
+  // Setze CPU Speed auf 80mHz
+  REG_CLR_BIT(0x3ff00014, BIT(0));
+  os_update_cpu_frequency(80);
+  ts=millis();
+  x=1;
+
+  for(int i=0; i<10000;i++) {x=x+1.2;}
+  sprintf(msg, "%d %f", millis()-ts,x );
+  client.publish("Speedtest", msg);
+
+    // Setze CPU Speed auf 16mHz
+  REG_SET_BIT(0x3ff00014, BIT(0));
+  os_update_cpu_frequency(160);
+  ts=millis();
+  x=1;
+    for(int i=0; i<10000;i++) {x=x+1.2;}
+  sprintf(msg, "%d %f", millis()-ts,x );
+  client.publish("Speedtest", msg);
+    
+ 
+
   int r = 0;
   sprintf(msg, "bytes read RS485: %d %d %d %d %d %d %d %d %d %d", r, rec[r++], rec[r++], rec[r++], rec[r++], rec[r++], rec[r++], rec[r++], rec[r++], rec[r++], rec[r++] );
   client.publish("rec", msg);
@@ -258,17 +283,20 @@ void loop() {
   int nID;;
   int i, r ;
   int value;
+  int milli=0;
   count++;
  
 
-  //client.publish("loop", "start" );
 
-  // Datenframe vom 485 einlesen
+  // Setze CPU Speed auf 16mHz
+  //REG_SET_BIT(0x3ff00014, BIT(0));
+  //os_update_cpu_frequency(160);
+  
+
+  // Datenframe vom RS485 einlesen
   if (readframe(anData, nID, nDataLen))
   {
-    // mqttreconnect();
-    //sprintf(msg, " ID %d /Checksum %d/%d nDatalen:%d", nID, nChecksum, nCrc,nDataLen );
-    //client.publish("Received", msg);
+    milli=millis();
 
     ///////////////////////////////////
     // Control MSG  und Neu
@@ -290,30 +318,17 @@ void loop() {
       Kessel.RLAVentil = getbit(anData, 2, 3);
 
       // kwh summieren
-      double deltat = (millis() - kwhtimer) / (3600.0 * 1000.0); // in h
+      double deltat = (milli - kwhtimer) / (3600.0 * 1000.0); // in h
+      
       if (Kessel.Leistung > 1) {
         Kessel.Brennerstunden += deltat; // Wenn der Kessel läuft
       }
       Kessel.kwh += Kessel.Leistung * deltat;
-      kwhtimer = millis();
-
-      // Debug control ausgeben
-      if (0)
-      {
-        for (int j = 0; j < 15; j += 4)
-        {
-          sprintf(msg, "%d %s %s %s %s", j, inttobin(anData[j]), inttobin(anData[j + 1]), inttobin(anData[j + 2]), inttobin(anData[j + 3]));
-          client.publish("ctrldata", msg);
-        }
-      }
-
-      //sprintf(msg, "-Frame:%d> type:%d[%d] / nlen:%d / nid:%d / nCounter / %d / nDatalen: %d /Checksum %d/%d",
-      //        count, nType, nState, nLen, nID, nCounter, nDataLen, nChecksum, nCrc );
-      //client.publish("info", msg);
+      kwhtimer = milli;
     }
 
     ///////////////////////////
-    // Sense Paket
+    // Sense Paket empfangen 
     if ((nID == 32) && messne(s, anData, nDataLen))
     {
 
@@ -332,28 +347,27 @@ void loop() {
       if (Kessel.Hauptantriebimpuls != oKessel.Hauptantriebimpuls )
       { // Hauptantrieb läuft und produziert Impulse
 
-            if(Kessel.Hauptantriebimpuls) Kessel.HauptantriebUD++; // vollst. Takte zählen
+           Kessel.HauptantriebUD++; // vollst. Takte zählen
           
-
-        if ((millis() - timerimpuls) < 1000)  // Wenn der letzte impuls weniger als 1s her ist läuft der HA
+        if ((milli - timerimpuls) < 1000)  // Wenn der letzte impuls weniger als 1s her ist läuft der HA
           {
             if (Kessel.Hauptantrieb == 0)
             {
               Kessel.Hauptantrieb = 1;
-              timerhazeit = millis();
+              timerhazeit = milli;
             }
           }
-          timerimpuls = millis();
+          timerimpuls = milli;
         
       } // Impulsende
       
 
-      if ((millis() - timerimpuls) >= 500) // Wenn der letzte impuls länger  als 1s her ist, ist der HA aus
+      if ((milli - timerimpuls) >= 500) // Wenn der letzte impuls länger  als 1s her ist, ist der HA aus
       {
         if (Kessel.Hauptantrieb)
         {
           Kessel.Hauptantrieb = 0;
-          Kessel.Hauptantriebzeit += (millis() - timerhazeit);
+          Kessel.Hauptantriebzeit += (milli - timerhazeit);
         }
 
       }
@@ -361,14 +375,14 @@ void loop() {
       oKessel.Hauptantriebimpuls = Kessel.Hauptantriebimpuls;
 
       // Debug sense ausgeben
-      if (0)
-      {
-        for (int j = 0; j < 15; j += 4)
-        {
-          sprintf(msg, "%d %s %s %s %s", j, inttobin(anData[j]), inttobin(anData[j + 1]), inttobin(anData[j + 2]), inttobin(anData[j + 3]));
-          client.publish("sensedata", msg);
-        }
-      }
+      //if (0)
+      //{
+      //  for (int j = 0; j < 15; j += 4)
+      //  {
+      //    sprintf(msg, "%d %s %s %s %s", j, inttobin(anData[j]), inttobin(anData[j + 1]), inttobin(anData[j + 2]), inttobin(anData[j + 3]));
+      //    client.publish("sensedata", msg);
+      //  }
+      //}
       //sprintf(msg, "-Frame:%d> type:%d[%d] / nlen:%d / nid:%d / nCounter / %d / nDatalen: %d /Checksum %d/%d", count, nType, nState, nLen, nID, nCounter, nDataLen, nChecksum, nCrc );
       //client.publish("info", msg);
       //}
@@ -378,14 +392,14 @@ void loop() {
 
     if ((Kessel.Raumaustragung == 0) && (oKessel.Raumaustragung == 1))
     {
-      Kessel.Schneckenlaufzeit = (millis() - timerschnecke) / 1000;
+      Kessel.Schneckenlaufzeit = (milli - timerschnecke) / 1000;
       if (Kessel.Schneckenlaufzeit > 800) Kessel.Schneckenlaufzeit = 0;
 
       Kessel.Schneckengesamtlaufzeit += Kessel.Schneckenlaufzeit;
     }
     if ((Kessel.Raumaustragung == 1) && (oKessel.Raumaustragung == 0))
     {
-      timerschnecke = millis();
+      timerschnecke = milli;
     }
     if ((Kessel.Raumaustragung == 0) && (oKessel.Raumaustragung == 0))
     {
@@ -398,78 +412,45 @@ void loop() {
 
   // Wichtig!!!
   // alle 5 Sekunden ## Update, damit OTA und Ping tun
-  if (millis() > (timeru + 5 * 1000))
+  if (milli > (timeru + 5 * 1000))
   {
-    timeru = millis();
+    timeru = milli;
     ArduinoOTA.handle();
     client.loop(); // Zeit für den Callback+MQTT Ping
   }
 
 
-  // mache Werte direkt ausgeben,  wenn eine Änderung da ist
+  // manche Werte direkt ausgeben,  wenn eine Änderung da ist
   // Wenn die Schnecke stehen geblieben ist und vorher lief Schneckenaufzeitausgeben
   if  (Kessel.Raumaustragung != oKessel.Raumaustragung)
   {
     if (Kessel.Raumaustragung == 0)
     {
-      mqttreconnect();
-      sprintf(msg, "%d", Kessel.Schneckenlaufzeit);
-      client.publish("Schneckenlaufzeit", msg);
+      // live reporting Schneckenlaufzeitausgabe deaktiieren 
+      //mqttreconnect();
+      //sprintf(msg, "%d", Kessel.Schneckenlaufzeit);
+      //client.publish("Schneckenlaufzeit", msg);
       oKessel.Schneckenlaufzeit = Kessel.Schneckenlaufzeit;
     }
     oKessel.Raumaustragung = Kessel.Raumaustragung;
 
   }
 
-  //  if (Kessel.RLAVentil != oKessel.RLAVentil)
-  //  {
-  //    mqttreconnect();
-  //    sprintf(msg, "%d", Kessel.RLAVentil);
-  //    client.publish("RLAVentil", msg);
-  //    oKessel.RLAVentil = Kessel.RLAVentil;
-  //  }
-
-
-  // Status HA immer ausgeben , wenn er sich ändert
-  if  (0 && (Kessel.Hauptantrieb != oKessel.Hauptantrieb))
-  {
-    mqttreconnect();
-    sprintf(msg, "%d", Kessel.Hauptantrieb);
-    client.publish("Hauptantrieb", msg);
-    
-    sprintf(msg, "%d", Kessel.HauptantriebUD);
-    client.publish("HauptantriebUD", msg);
-
-    if (Kessel.Hauptantrieb) // Ha ausgegangen Laufzeitausgeben
-    {
-
-      timerha = millis();
-    }
-    else
-    {
-      sprintf(msg, "%d", (millis() - timerha));
-      client.publish("HAzeit", msg);
-    }
-
-    oKessel.Hauptantrieb = Kessel.Hauptantrieb;
-  }
-
-
   // Alle anderen Änderungen werden erst ausgegeben wenn
   // timer1 abgelaufen
   // wenn Änderung alle x*60 Sekunden Ausgabe an MQTT
 
-  if (millis() > (timer1 + deltatime * 60 * 1000))
+  if (milli > (timer1 + deltatime * 60 * 1000))
   {
-    timer1 = millis();
-
+    timer1 = milli;
 
     if (memcmp(&oKessel, &Kessel, sizeof(Kessel)))
     {
       mqttreconnect();
-
-
-
+      sprintf(msg, "%d", count);
+      client.publish("loopcounter", msg);
+      count=0;
+    
       sprintf(msg, "%d", Kessel.HauptantriebUD);
       client.publish("HauptantriebUD", msg);
 
@@ -478,7 +459,7 @@ void loop() {
 
       if(Kessel.Hauptantriebzeit)
         {
-          sprintf(msg, "%f", (float)Kessel.HauptantriebUD/((float) Kessel.Hauptantriebzeit )* 1000.0) ;
+          sprintf(msg, "%f", (float)(1000 * Kessel.HauptantriebUD)/((float) Kessel.Hauptantriebzeit )) ;
           client.publish("HauptantriebUDproSekunde", msg);
         }
 
@@ -496,20 +477,12 @@ void loop() {
       
       client.publish("PelletsNA", msg);
 
-      // Gesamtverbrauch in GR
-      client.publish("Pellets", msg);
-
       // akt Verbrauch berechnen
       if (Kessel.HauptantriebUD - UD)
       {
         int d,p;
-        d = (Kessel.HauptantriebUD - UD) * 3600 * 1000 / (millis() - timerd);
-        p = (int)( ((float)(Kessel.Hauptantriebzeit - ZD)) *UDfaktor*UDsek/1000.0 * 3600.0 *1000.0/(millis() - timerd));
-
-        //sprintf(msg, "%d", p);
-        //client.publish("deltaPelletsHAh", msg);
-        
-        //p=Kessel.Hauptantriebzeit - ZD;
+        d = (Kessel.HauptantriebUD - UD) * 3600 * 1000 / (milli - timerd);
+        p = (int)( ((float)(Kessel.Hauptantriebzeit - ZD)) *UDfaktor*UDsek/1000.0 * 3600.0 *1000.0/(milli - timerd));
         
         sprintf(msg, "%d", Kessel.HauptantriebUD - UD);
         client.publish("deltaUD", msg);
@@ -520,7 +493,7 @@ void loop() {
         client.publish("deltaPelletsh", msg);
 
         // Verbrauch pro Stunde gemessen über NA
-        sprintf(msg, "%d", (int) ((float)(Kessel.Schneckengesamtlaufzeit - SL) * NAfaktor * 1000.0 * 3600.0 / ( millis() - timerd)));
+        sprintf(msg, "%d", (int) ((float)(Kessel.Schneckengesamtlaufzeit - SL) * NAfaktor * 1000.0 * 3600.0 / ( milli - timerd)));
         client.publish("deltaPelletsNAh", msg);
         
         
@@ -530,16 +503,16 @@ void loop() {
         //sprintf(msg, "%d", (millis() - timerd) / 1000);
         //client.publish("deltat", msg);
         ZD = Kessel.Hauptantriebzeit;
-        timerd = millis();
+        timerd = milli;
       }
 
     //////////////////////////////////////////////
     // Berechnung HA/NA Verhältnis
     // Alle xx Min  berechnen (-> ca. 1.9 wenn der sinkt gibt es Förderprobleme)
     
-    if (millis() > ( HANAtimer + 30 * 60  * 1000))
+    if (milli > ( HANAtimer + 30 * 60  * 1000))
       {
-      HANAtimer = millis();
+      HANAtimer = milli;
       double v;
 
       if ((Kessel.Hauptantriebzeit-HAz) && (Kessel.Schneckengesamtlaufzeit-NAz)) // Wenn der HA lief
@@ -550,8 +523,7 @@ void loop() {
         NAz=Kessel.Schneckengesamtlaufzeit;
         HAz=Kessel.Hauptantriebzeit;
         }
-      }
-      
+      }      
       
       if (Kessel.Schneckengesamtlaufzeit != oKessel.Schneckengesamtlaufzeit)
       {
