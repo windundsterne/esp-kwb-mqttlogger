@@ -1,6 +1,9 @@
 //###################################################################
 //###################################################################
 // Rs485 einlesen eines Bytes 19200 8 n 1
+int bytecounter=0;
+int framecounter=0;
+int errorcounter=0;
 
 unsigned char readbyte()
 {
@@ -23,6 +26,7 @@ unsigned char readbyte()
     if (RS485Serial.available())  //Look for data from other Arduino
     {
       bytecount++;
+      bytecounter++;
       b = RS485Serial.read();  // Read received byte
 
       //sprintf(m, "[%d/%d]:%d", bytecount,waitcount, (int) b);
@@ -158,8 +162,9 @@ int readframe(unsigned char anData[],int &nID,int &nDataLen)
   // kleine Pause um Stromverbrauch zu reduzieren
   // 3 ms nach einem Frame sollte kein Problem sein
   
-  delay(5);
+  //delay(5);
 
+  framecounter++;
 
   // Prüfsumme berechnen
   nCrc = 0x02;
@@ -169,8 +174,14 @@ int readframe(unsigned char anData[],int &nID,int &nDataLen)
   for (int i = 0; i < nDataLen; i++)
     nCrc = CrcAdd(nCrc, anData[i]);
 
-    if (nChecksum == nCrc) return 1; 
-    else return 0;
+    if (nChecksum == nCrc) 
+      return 1; 
+    else  
+      {
+      // Statistik fehlerhafte Frames
+      errorcounter++;
+      return 0;
+    }
  
 }
 

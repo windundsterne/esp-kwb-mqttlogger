@@ -67,6 +67,10 @@ int UDtimer = 0;
 int HANAtimer=0; // Timer zur Ausgabe der HANA Ratio
 int NAz=0,HAz=0;
 
+extern int bytecounter;
+extern int framecounter;
+extern int errorcounter;
+
 //  gemessen 308gr auf 229 UD = 1.3449
 //  Empirische aus 26KW Leistung 1.3338
 //  24,7KW/4.8 mit 2338 UD -> 2.200
@@ -96,7 +100,7 @@ unsigned long keeptime = 0, timerd = 0, timer1 = 0, timer2 = 0, timer3 = 0, time
 unsigned long timerprell = 0, timerhazeit = 0;
 unsigned long timerschnecke = 0;
 unsigned long kwhtimer = 0; // Zeit seit letzer KW Messung
-unsigned char c[1000], s[1000];
+//unsigned char c[1000], s[1000];
 
 struct ef2
 {
@@ -284,10 +288,7 @@ void loop() {
   int i, r ;
   int value;
   int milli=0;
-  count++;
  
-
-
   // Setze CPU Speed auf 16mHz
   //REG_SET_BIT(0x3ff00014, BIT(0));
   //os_update_cpu_frequency(160);
@@ -297,16 +298,18 @@ void loop() {
   if (readframe(anData, nID, nDataLen))
   {
     milli=millis();
+   
 
     ///////////////////////////////////
     // Control MSG  und Neu
-    if ((nID == 33) && messne(c, anData, nDataLen))
+    // if ((nID == 33) && messne(c, anData, nDataLen))
+    if (nID == 33)
     {
       //mqttreconnect();
       // sprintf(msg, " ID %d /Checksum %d/%d nDatalen:%d", nID, nChecksum, nCrc,nDataLen );
       //client.publish("Received", "messeq");
 
-      for (i = 0; i < nDataLen; i++) c[i] = anData[i];
+      //for (i = 0; i < nDataLen; i++) c[i] = anData[i];
 
       Kessel.Leistung = lfaktor *  getval2(anData, 12, 2, 0.05, 0);
       Kessel.Pumpepuffer = getbit(anData, 2, 7);
@@ -329,10 +332,11 @@ void loop() {
 
     ///////////////////////////
     // Sense Paket empfangen 
-    if ((nID == 32) && messne(s, anData, nDataLen))
+    //if ((nID == 32) && messne(s, anData, nDataLen))
+    if (nID == 32)
     {
 
-      for (i = 0; i < nDataLen; i++) s[i] = anData[i];
+      //for (i = 0; i < nDataLen; i++) s[i] = anData[i];
       // Photodiode
       Kessel.photo =  getval2(anData, 32, 2, 0.1, 1);
       Kessel.Kesseltemperatur = getval2(anData, 12, 2, 0.1, 1);
@@ -442,14 +446,33 @@ void loop() {
 
   if (milli > (timer1 + deltatime * 60 * 1000))
   {
-    timer1 = milli;
-
+    
+    // Wenn sich etwas an den Daten getan hat
     if (memcmp(&oKessel, &Kessel, sizeof(Kessel)))
     {
       mqttreconnect();
-      sprintf(msg, "%d", count);
-      client.publish("loopcounter", msg);
-      count=0;
+
+      sprintf(msg, "%d", (bytecounter*1000)/(milli - timer1));
+      client.publish("bytecounter", msg);
+      bytecounter=0;
+
+      sprintf(msg, "%d", framecounter);
+      client.publish("framecounter", msg);
+      framecounter=0;
+
+      sprintf(msg, "%d", errorcounter);
+      client.publish("errorcounter", msg);
+      errorcounter=0;
+
+
+      //int ts; double x;
+      //ts=millis();
+      //x=1;
+      //for(int i=0; i<10000;i++) {x=x+1.2;}
+      //sprintf(msg, "%d %f", millis()-ts,x );
+      //client.publish("Speedtest", msg);
+
+  
     
       sprintf(msg, "%d", Kessel.HauptantriebUD);
       client.publish("HauptantriebUD", msg);
@@ -459,8 +482,8 @@ void loop() {
 
       if(Kessel.Hauptantriebzeit)
         {
-          sprintf(msg, "%f", (float)(1000 * Kessel.HauptantriebUD)/((float) Kessel.Hauptantriebzeit )) ;
-          client.publish("HauptantriebUDproSekunde", msg);
+          //sprintf(msg, "%f", (float)(1000 * Kessel.HauptantriebUD)/((float) Kessel.Hauptantriebzeit )) ;
+          //client.publish("HauptantriebUDproSekunde", msg);
         }
 
       //sprintf(msg, "%d", (int)(((float)Kessel.Hauptantriebzeit) * UDfaktor * UDsek)/1000); // Ca. * Gramm/UD * UD/sek
@@ -574,6 +597,7 @@ void loop() {
 
       if (Kessel.Reinigung != oKessel.Reinigung)
       {
+       
         sprintf(msg, "%d", Kessel.Reinigung);
         client.publish("Reinigung", msg);
 
@@ -646,6 +670,7 @@ void loop() {
 
     }
 
+  timer1 = milli;
   } // timer1 Ausgabe alle 5min
 
 }
