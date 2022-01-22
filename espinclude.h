@@ -1,25 +1,36 @@
 //###################################################################
 //###################################################################
 // Rs485 einlesen eines Bytes 19200 8 n 1
-int bytecounter=0;
-int framecounter=0;
-int errorcounter=0;
+
+// io-Stats
+long bytecounter = 0;
+long framecounter = 0;
+long errorcounter = 0;
+
+extern unsigned long longwaitcount;
+
+// Lese ein Byte - wenn dies innerhalb von
+// x ms ansteht
 
 unsigned char readbyte()
 {
   unsigned char b;
-  //char m[256];
   int timestamp;
-  int wait = 100000; // x * 10ms  warte nur 100ms
+  int wait = 3 ; // 3 *  5 ms  warten
 
+
+  // Counter Überläufe
 #define MAXCOUNT 1000000000
-
   if ((waitcount > MAXCOUNT) || (bytecount > MAXCOUNT))
   {
     waitcount = 0;
     bytecount = 0;
+  }
+  if (longwaitcount > MAXCOUNT)
+  {
     longwaitcount = 0;
   }
+
 
   while (1)
   {
@@ -28,26 +39,19 @@ unsigned char readbyte()
       bytecount++;
       bytecounter++;
       b = RS485Serial.read();  // Read received byte
-
-      //sprintf(m, "[%d/%d]:%d", bytecount,waitcount, (int) b);
-      //client.publish("readbyte", m);
-      //delay(10);
       return (b);
     }
     else
     { // kein Input , mx timeout sekunde warten
 
       waitcount++;
-      wait--;
 
-      if ( wait == 0)
+      if (wait-- == 0)
       {
         longwaitcount++;
-        //sprintf(m, "[%d/%d] -", bytecount,waitcount);
-        //client.publish("readbyte", m);
         return (0);
       }
-
+      delay(5);
     }
   }
 }
@@ -101,68 +105,68 @@ int CrcAdd(int nCrc, unsigned char nByte)
 
 
 // Read RS 484 Frame
-int readframe(unsigned char anData[],int &nID,int &nDataLen)
+int readframe(unsigned char anData[], int &nID, int &nDataLen)
 {
   int nState, bRxFinished;
   unsigned char nType, nLen, nCounter, nChecksum;
   unsigned char nX;
-  int nCrc;  
-    nState = STATE_WAIT_FOR_HEADER;
-    bRxFinished = FALSE;
+  int nCrc;
+  nState = STATE_WAIT_FOR_HEADER;
+  bRxFinished = FALSE;
 
-    nLen = 0; nCounter = 0; nType = 0; nID = 0; nChecksum = 0; nDataLen = 0; nCrc = 0;
-    for (int i = 0; i < 256; i++) anData[i] = 0;
+  nLen = 0; nCounter = 0; nType = 0; nID = 0; nChecksum = 0; nDataLen = 0; nCrc = 0;
+  for (int i = 0; i < 256; i++) anData[i] = 0;
 
-    while (bRxFinished == FALSE)
+  while (bRxFinished == FALSE)
+  {
+    nX = readbyte();                           // # read one byte
+
+    if ((nState == STATE_WAIT_FOR_HEADER) && (nX == 2))
     {
-      nX = readbyte();                           // # read one byte
-
-      if ((nState == STATE_WAIT_FOR_HEADER) && (nX == 2))
+      nState = STATE_READ_MSG;             // # header found
+      // nType = MSG_TYPE_CTRL;             //          # -> CtrlMessage
+    }
+    else
+    {
+      if (nState == STATE_READ_MSG)
       {
-        nState = STATE_READ_MSG;             // # header found
-        // nType = MSG_TYPE_CTRL;             //          # -> CtrlMessage
-      }
-      else
-      {
-        if (nState == STATE_READ_MSG)
+        if (nX == 0)                        // # header invalid -> start again
         {
-          if (nX == 0)                        // # header invalid -> start again
-          {
-            nState = STATE_WAIT_FOR_HEADER;
-            nType = MSG_TYPE_CTRL;
-          }
-          if (nX == 2)                       //# extended header -> SenseMessage
-          {
-            nState = STATE_READ_MSG;
-            nType = MSG_TYPE_SENSE;
-          }
-          if ((nX != 0) && (nX != 2))
-          {
-            nLen = nX;                   //     # current byte: Message Length
-            nID = readbyte();            //     # next byte: Message ID
-            nCounter = readbyte();       //     # next byte: Message Counter
-            nDataLen = nLen - 4 - 1;     //     Data Length = Message Length without the header and checksum
+          nState = STATE_WAIT_FOR_HEADER;
+          nType = MSG_TYPE_CTRL;
+        }
+        if (nX == 2)                       //# extended header -> SenseMessage
+        {
+          nState = STATE_READ_MSG;
+          nType = MSG_TYPE_SENSE;
+        }
+        if ((nX != 0) && (nX != 2))
+        {
+          nLen = nX;                   //     # current byte: Message Length
+          nID = readbyte();            //     # next byte: Message ID
+          nCounter = readbyte();       //     # next byte: Message Counter
+          nDataLen = nLen - 4 - 1;     //     Data Length = Message Length without the header and checksum
 
-            if ((nDataLen >= 0) && (nDataLen < 256))
-              for (int i = 0; (i < nDataLen) ; i++)
+          if ((nDataLen >= 0) && (nDataLen < 256))
+            for (int i = 0; (i < nDataLen) ; i++)
+            {
+              anData[i] = readbyte();
+              if ( anData[i] == 2)
               {
-                anData[i] = readbyte();
-                if ( anData[i] == 2)
-                {
-                  nChecksum = readbyte();        //      # "2" in data stream is followed by "0" ...
-                }
+                nChecksum = readbyte();        //      # "2" in data stream is followed by "0" ...
               }
-            nChecksum = readbyte();
-            bRxFinished = TRUE;
-          }
+            }
+          nChecksum = readbyte();
+          bRxFinished = TRUE;
         }
       }
     }
+  }
 
   // kleine Pause um Stromverbrauch zu reduzieren
   // 3 ms nach einem Frame sollte kein Problem sein
-  
-  //delay(5);
+
+  delay(3);
 
   framecounter++;
 
@@ -174,15 +178,15 @@ int readframe(unsigned char anData[],int &nID,int &nDataLen)
   for (int i = 0; i < nDataLen; i++)
     nCrc = CrcAdd(nCrc, anData[i]);
 
-    if (nChecksum == nCrc) 
-      return 1; 
-    else  
-      {
-      // Statistik fehlerhafte Frames
-      errorcounter++;
-      return 0;
-    }
- 
+  if (nChecksum == nCrc)
+    return 1;
+  else
+  {
+    // Statistik fehlerhafte Frames
+    errorcounter++;
+    return 0;
+  }
+
 }
 
 
@@ -196,12 +200,12 @@ void mqttreconnect() {
   int i;
   i = 5;
   // loopcount until we're reconnected
-  
+
 
 
   while (i-- && !client.connected()) {
     //Serial.print("Attempting MQTT connection...");
-   
+
 
     if (client.connect(MQNAME)) {
       // Serial.println("connected");
@@ -268,44 +272,44 @@ int sort_desc(const void *cmp1, const void *cmp2)
 
 
 
-// Blink n mal die Webmod onbload LED 
+// Blink n mal die Webmod onbload LED
 
 void blink(int n)
 {
 
 #define ledPin 2 // led Pin
-pinMode(ledPin, OUTPUT);
-// Blink
+  pinMode(ledPin, OUTPUT);
+  // Blink
 #define INTERVAL 500
 
-while (n-->0)
-{
-  digitalWrite(ledPin, LOW);
-  delay(INTERVAL);
-  digitalWrite(ledPin, HIGH);
-  delay(INTERVAL);
-}
+  while (n-- > 0)
+  {
+    digitalWrite(ledPin, LOW);
+    delay(INTERVAL);
+    digitalWrite(ledPin, HIGH);
+    delay(INTERVAL);
+  }
 }
 
 void relais(int n)
 {
-// https://chewett.co.uk/blog/1066/pin-numbering-for-wemos-d1-mini-esp8266/
+  // https://chewett.co.uk/blog/1066/pin-numbering-for-wemos-d1-mini-esp8266/
 #define RELAIS 5 // d1 pin
-pinMode(RELAIS, OUTPUT);
+  pinMode(RELAIS, OUTPUT);
 
-if (n==1) 
-	{
+  if (n == 1)
+  {
     digitalWrite(RELAIS, HIGH);
-	Serial.println("Relais an ");
-	}
-	else
-	{
-	
-    digitalWrite(RELAIS, LOW);
-	Serial.println("Relais aus ");
+    Serial.println("Relais an ");
+  }
+  else
+  {
 
-	}
-  
+    digitalWrite(RELAIS, LOW);
+    Serial.println("Relais aus ");
+
+  }
+
 }
 
 //##################################################
