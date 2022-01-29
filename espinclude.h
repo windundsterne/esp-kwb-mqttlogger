@@ -34,11 +34,24 @@ unsigned char readbyte()
 
   while (1)
   {
-    if (RS485Serial.available())  //Look for data from other Arduino
+
+#ifdef SWSERIAL
+  if (RS485Serial.available())  //Look for data from other Arduino
+#else
+  if (Serial.available())
+#endif  
     {
       bytecount++;
       bytecounter++;
-      b = RS485Serial.read();  // Read received byte
+      
+#ifdef SWSERIAL
+     b = RS485Serial.read();  // Read received byte
+#else
+     b = Serial.read();  // Read received byte
+#endif  
+      
+      
+      // 
       return (b);
     }
     else
@@ -105,7 +118,7 @@ int CrcAdd(int nCrc, unsigned char nByte)
 
 
 // Read RS 484 Frame
-int readframe(unsigned char anData[], int &nID, int &nDataLen)
+int readframe(unsigned char anData[], int &nID, int &nDataLen, int &fid, int &error)
 {
   int nState, bRxFinished;
   unsigned char nType, nLen, nCounter, nChecksum;
@@ -145,6 +158,7 @@ int readframe(unsigned char anData[], int &nID, int &nDataLen)
           nLen = nX;                   //     # current byte: Message Length
           nID = readbyte();            //     # next byte: Message ID
           nCounter = readbyte();       //     # next byte: Message Counter
+          fid=(int)nCounter;
           nDataLen = nLen - 4 - 1;     //     Data Length = Message Length without the header and checksum
 
           if ((nDataLen >= 0) && (nDataLen < 256))
@@ -179,12 +193,18 @@ int readframe(unsigned char anData[], int &nID, int &nDataLen)
     nCrc = CrcAdd(nCrc, anData[i]);
 
   if (nChecksum == nCrc)
-    return 1;
+    {
+      error=0;
+      return 1;
+    }
+    
   else
   {
     // Statistik fehlerhafte Frames
     errorcounter++;
-    return 0;
+    error=1;
+    return 1; // return 0 ; 
+    
   }
 
 }
@@ -211,10 +231,10 @@ void mqttreconnect() {
       // Serial.println("connected");
       client.subscribe(INTOPIC);
     } else {
-      Serial.print("Attempting MQTT connection...");
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
+      //Serial.print("Attempting MQTT connection...");
+      // Serial.print("failed, rc=");
+      // Serial.print(client.state());
+      // Serial.println(" try again in 5 seconds");
       // Wait 5 seconds before retrying
       delay(5000);
     }
