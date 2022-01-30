@@ -105,6 +105,9 @@ int     dd_d1[DDC];
 int     ddc = 0;
 
 
+// Framedata
+char dd_data[DDC][60];
+
 int HAimp = 0;
 
 //  gemessen 308gr auf 229 UD = 1.3449
@@ -113,8 +116,6 @@ int HAimp = 0;
 //  22KW * 0.8 * 9,4h  *  4kg /h  / 1642 UD =
 
 // 400g in 120sek. > 3.333 g/s 
-
-
 
 // gemessen am HA
 // 310gr 207UD = 1,495 g/UD > 3,58 g/s
@@ -365,12 +366,7 @@ void loop() {
   {
     milli = millis();
 
-//    if ( ddc < (DDC - 1)) ddc++;
-//    dd_t[ddc] = milli;
-//    dd_frameid[ddc] = frameid;
-//    dd_nID[ddc] = nID;
-//    dd_error[ddc] = error;
-//    dd_d1[ddc] = 0;
+
 
 
 
@@ -393,13 +389,33 @@ void loop() {
       Kessel.Hauptantrieb = anData[5] &  1;
 
       //Kessel.Hauptantriebzeit +=Kessel.Hauptantrieb;
-      
+
+
+      if ( ddc < (DDC - 1)) ddc++;
+      dd_t[ddc] = milli;
+      dd_frameid[ddc] = frameid;
+      dd_nID[ddc] = nID;
+
+      // Frame speichern 
+      for (int i=0;i<24;i++)
+      {
+        dd_data[ddc][i]=anData[i];
+        
+      }
       // kwh summieren
       double deltat = (milli - kwhtimer) / (3600.0 * 1000.0); // in h
 
       // Steuergerät sendet stop / start
       if(Kessel.Hauptantrieb != oKessel.Hauptantrieb)
       {
+        idl[ic] = Kessel.Hauptantrieb;
+        // impulsdauer speichern Millisekunden
+        id[ic] = milli;
+        ifc[ic] = frameid;
+        ic = (ic + 1) % 300;
+        idl[ic] = 0;
+
+        
         
         if(Kessel.Hauptantrieb) // start merken 
             timerHAstart=milli;
@@ -431,7 +447,9 @@ void loop() {
       Kessel.ext = getbit(anData, 4, 7);
       Kessel.Hauptantriebimpuls = getbit(anData, 3, 7);
 
-      dd_d1[ddc] = Kessel.Hauptantriebimpuls;
+
+              
+
 
       // zwei gleiche impulse, die vom akt. unterschiedlich sind
 
@@ -443,12 +461,7 @@ void loop() {
         HAimp = Kessel.Hauptantriebimpuls;
         Kessel.HauptantriebUD++; // vollst. Takte zählen
 
-        idl[ic] += errorcounter - last_errorcount;
-        // impulsdauer speichern Millisekunden
-        id[ic] = milli;
-        ifc[ic] = frameid;
-        ic = (ic + 1) % 300;
-        idl[ic] = 0;
+
 
         last_errorcount = errorcounter;
 
@@ -507,7 +520,7 @@ void loop() {
 //    }
 
 
-    idl[ic] += 100;
+   
     timeru = milli;
     ArduinoOTA.handle(); // OTA nur wenn Kessel nicht brennt
     client.loop(); // Zeit für den Callback+MQTT Ping
@@ -599,12 +612,29 @@ void loop() {
       //
       //
       //
-      //      for (i = 1; i < ic; i++)
-      //      {
-      //        sprintf(msg, "%3d %d %3d %4d %4d", i, id[i], idl[i], ifc[i], id[i] - id[i - 1]);
-      //        //sprintf(msg, "%d %d %d", i, id[i], idl[i]);
-      //        client.publish("id", msg);
-      //      }
+
+      // Auswertung Recording
+
+      for(int b=0; b<24; b++)
+       for(int bt=0; bt < 8 ; bt++)
+         {
+         int sum=0;
+         for(int frm=0; frm<ed ; frm++)
+           {
+            if(((dd_data[frm][b])>>bt)&1) sum++;
+           }
+           sprintf(msg, " b:%2d bit:%d",b,bt,sum );
+           client.publish("id", msg);
+         }
+
+      ddc=0;
+   
+      for (i = 1; i < ic; i++)
+        {
+        sprintf(msg, "i:%3d t:%d ha:%3d frame:%4d dt:%4d", i, id[i], idl[i], ifc[i], id[i] - id[i - 1]);
+        client.publish("id", msg);
+        }
+      
       ic = 1; id[0] = millis();
 
       sprintf(msg, "%d", (bytecounter * 1000) / (milli - timer1));
@@ -656,8 +686,9 @@ void loop() {
         //sprintf(msg, "%d", p);
         //client.publish("deltaPelletsHA", msg);
         //sprintf(msg, "%d", d);
-        //client.publish("deltaUDh", msg);
-        //sprintf(msg, "%d", (int)(d * UDfaktor));
+        sprintf(msg, "%d", (int)(d * UDfaktor));
+        client.publish("deltaPelletsUDHAh", msg);
+        
 
 
         // Verbrauch pro Stunde gemessen über NA
