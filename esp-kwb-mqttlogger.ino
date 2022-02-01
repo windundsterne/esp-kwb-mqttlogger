@@ -90,23 +90,23 @@ extern long errorcounter;
 long last_errorcount = 0;
 
 // Stat impulse
-unsigned long id[300];
+unsigned long id[200];
 int ic = 0;
-unsigned long ifc[300];
-unsigned long idl[300];
+unsigned long ifc[200];
+unsigned long idl[200];
 
 // Recording
-#define DDC 1000
+#define DDC 200
+
 unsigned long    dd_t[DDC];
 int     dd_frameid[DDC];
 int     dd_nID[DDC];
-int     dd_error[DDC];
-int     dd_d1[DDC];
 int     ddc = 0;
 
-
 // Framedata
-char dd_data[DDC][60];
+#define DCCBYTES 7
+#define DCCOFF 5
+unsigned char dd_data[DDC][DCCBYTES+1];
 
 int HAimp = 0;
 
@@ -115,7 +115,6 @@ int HAimp = 0;
 //  24,7KW/4.8 mit 2338 UD -> 2.200
 //  22KW * 0.8 * 9,4h  *  4kg /h  / 1642 UD =
 
-// 400g in 120sek. > 3.333 g/s 
 
 // gemessen am HA
 // 310gr 207UD = 1,495 g/UD > 3,58 g/s
@@ -129,11 +128,10 @@ int HAimp = 0;
 
 double lfaktor = 1.0; // Umrechnung Leistung
 
-
 double UDfaktor = 1.49; // gr Pellet pro UD HA
 double UDsek =  1.73; // 2.45; // Umdrechungen HA / sek
 double NAfaktor = 5.4;
-double HAfaktor = 2.00; // 3.58g pro Sekunde Laufzeit des HA
+double HAfaktor = (400.0/120.0) ; // // 400g in 120sek. > 3.333 g/s 
 
 unsigned long count = 0;
 unsigned long bytecount = 0;
@@ -143,7 +141,7 @@ unsigned long keeptime = 0, timerd = 0, timer1 = 0, timer2 = 0, timer3 = 0, time
 unsigned long timerprell = 0, timerhazeit = 0;
 unsigned long timerschnecke = 0;
 unsigned long timerpause = 0;
-unsigned long timerHAstart = 0 ; 
+unsigned long timerHA = 0 ; 
 unsigned long kwhtimer = 0; // Zeit seit letzer KW Messung
 
 struct ef2
@@ -165,9 +163,10 @@ struct ef2
   int KeineStoerung = 0;
   int Raumaustragung = 0;
   int Hauptantriebimpuls = 0; // Impulszähler
-  int Hauptantrieb = 0 ;      // Motor läuft
+  int Hauptantrieb = 0 ;      // HAMotor Laufzeit in Millisekunden 
   int HauptantriebUD = 0; // Umdrehungen Stoker
-  unsigned long  Hauptantriebzeit = 0; // Gesamt HAzeit in millisekunden
+  unsigned long  Hauptantriebzeit = 1; // Gesamt HAzeit in millisekunden
+  unsigned long  Hauptantriebtakt = 1; // Taktzeit in millisekunden
   int Pumpepuffer = 0;
   int RLAVentil = 0;
   int ext = 1;
@@ -366,17 +365,11 @@ void loop() {
   {
     milli = millis();
 
-
-
-
-
-
     ///////////////////////////////////
     // Control MSG  / Von Bediengerät an Kessel
 
     if (nID == 33)
     {
-
       Kessel.Leistung = lfaktor *  getval2(anData, 12, 2, 0.05, 0);
       Kessel.Pumpepuffer = getbit(anData, 2, 7);
       Kessel.Zuendung = getbit(anData, 16, 2);
@@ -385,45 +378,38 @@ void loop() {
       Kessel.Drehrost = getbit(anData, 3, 6);
       Kessel.Raumaustragung = getbit(anData, 9, 2);
       Kessel.RLAVentil = getbit(anData, 2, 3);
-      //Kessel.Hauptantrieb = getbit(anData, 12, 1);
-      Kessel.Hauptantrieb = anData[5] &  1;
+      
+      Kessel.Hauptantrieb = getval2(anData,12, 2, 10, 0);
+      Kessel.Hauptantriebtakt = getval2(anData,10, 2, 10, 0);      
+    
 
-      //Kessel.Hauptantriebzeit +=Kessel.Hauptantrieb;
 
-
-      if ( ddc < (DDC - 1)) ddc++;
-      dd_t[ddc] = milli;
-      dd_frameid[ddc] = frameid;
-      dd_nID[ddc] = nID;
+//      if ( ddc < (DDC - 1)) ddc++;
+//      dd_t[ddc] = milli;
+//      dd_frameid[ddc] = frameid;
+//      dd_nID[ddc] = nID;
 
       // Frame speichern 
-      for (int i=0;i<24;i++)
-      {
-        dd_data[ddc][i]=anData[i];
-        
-      }
+//      for (int i=DCCOFF;i<DCCOFF+DCCBYTES;i++)
+//      {
+//        dd_data[ddc][i-DCCOFF]=anData[i];
+//        
+//      }
       // kwh summieren
       double deltat = (milli - kwhtimer) / (3600.0 * 1000.0); // in h
 
-      // Steuergerät sendet stop / start
-      if(Kessel.Hauptantrieb != oKessel.Hauptantrieb)
-      {
-        idl[ic] = Kessel.Hauptantrieb;
-        // impulsdauer speichern Millisekunden
-        id[ic] = milli;
-        ifc[ic] = frameid;
-        ic = (ic + 1) % 300;
-        idl[ic] = 0;
+       // Hauptantrieb Range:  0 .. Kessel.Hauptantriebtakt 
 
-        
-        
-        if(Kessel.Hauptantrieb) // start merken 
-            timerHAstart=milli;
-        else 
-            Kessel.Hauptantriebzeit += ( milli - timerHAstart )  ;
-            
+       if(Kessel.Hauptantriebtakt != 0 )
+        {
+         Kessel.Hauptantriebzeit += (oKessel.Hauptantrieb * (milli - timerHA))/(oKessel.Hauptantriebtakt); 
+        }
+
+       
+        timerHA=milli;    
         oKessel.Hauptantrieb = Kessel.Hauptantrieb;
-      }
+        oKessel.Hauptantriebtakt = Kessel.Hauptantriebtakt;
+      
 
       if (Kessel.Leistung > 1) {
         Kessel.Brennerstunden += deltat; // Wenn der Kessel läuft
@@ -434,7 +420,6 @@ void loop() {
 
     ///////////////////////////
     // Sense Paket empfangen
-
     if (nID == 32)
     {
       Kessel.photo =  getval2(anData, 32, 2, 0.1, 1);
@@ -446,9 +431,6 @@ void loop() {
       Kessel.Geblaese = getval2(anData, 71, 2, 0.6, 0);
       Kessel.ext = getbit(anData, 4, 7);
       Kessel.Hauptantriebimpuls = getbit(anData, 3, 7);
-
-
-              
 
 
       // zwei gleiche impulse, die vom akt. unterschiedlich sind
@@ -504,21 +486,28 @@ void loop() {
    
   // Wichtig!!!
   // alle x Sekunden ## Update, damit OTA und Ping tun
-  if (milli > (timeru + 2 * 1000))
+  if (milli > (timeru + 5 * 1000))
   {
 
-//    if (nID == 33)
-//    {
-//      mqttreconnect();
-//      sprintf(msg, "HA %d %d %s", anData[5] &1,(anData[12]>>7)&1,inttobin(anData[12]));
-//      client.publish("info", msg);
+    if (nID == 33)
+    {
+      mqttreconnect();
+      sprintf(msg, "10:%5.0f HA12:%5.0f",getval2(anData,10, 2, 10, 0),getval2(anData,12, 2, 10, 0)    );
+      client.publish("sensedata", msg);
+       
+
 //      for (int j = 0; j <= 20; j = j + 5)
 //      {
 //        sprintf(msg, "t:%4d id:%3d: %3d %s %s %s %s %s %2d", milli / 1000, frameid, j, inttobin(anData[j]), inttobin(anData[j + 1]), inttobin(anData[j + 2]), inttobin(anData[j + 3]), inttobin(anData[j + 4]), nDataLen);
 //        client.publish("sensedata", msg);
 //      }
-//    }
 
+//       int j=4;
+//
+//       sprintf(msg, "t:%4d id:%3d: %3d %s %s %s %s %s %2d", milli / 1000, frameid, j, inttobin(anData[j]), inttobin(anData[j + 1]), inttobin(anData[j + 2]), inttobin(anData[j + 3]), inttobin(anData[j + 4]), nDataLen);
+//       client.publish("sensedata", msg);
+        
+      }
 
    
     timeru = milli;
@@ -597,7 +586,7 @@ void loop() {
       // Aufzeichung ausgeben
 
 
-      int ed = ddc;
+     // int ed = ddc;
 
       //
       //     sprintf(msg,"%d",ed);
@@ -615,27 +604,35 @@ void loop() {
 
       // Auswertung Recording
 
-      for(int b=0; b<24; b++)
-       for(int bt=0; bt < 8 ; bt++)
-         {
-         int sum=0;
-         for(int frm=0; frm<ed ; frm++)
-           {
-            if(((dd_data[frm][b])>>bt)&1) sum++;
-           }
-           sprintf(msg, " b:%2d bit:%d",b,bt,sum );
-           client.publish("id", msg);
-         }
+//      sprintf(msg, "Records %d",ed );
+//      client.publish("info", msg);
+//           
+//      for(int b=0; b<DCCBYTES; b++)
+//       for(int bt=0; bt < 8 ; bt++)
+//         {
+//         int sum=0;
+//         for(int frm=1; frm<ed ; frm++)
+//           {
+//            if( (((dd_data[frm-1][b])>>bt)&1) !=    (((dd_data[frm][b])>>bt)&1)  ) sum++;
+//           }
+//           sprintf(msg, " b:%2d bit:%d sum:%d",b+DCCOFF,bt,sum );
+//           client.publish("id", msg);
+//         }
 
-      ddc=0;
-   
-      for (i = 1; i < ic; i++)
-        {
-        sprintf(msg, "i:%3d t:%d ha:%3d frame:%4d dt:%4d", i, id[i], idl[i], ifc[i], id[i] - id[i - 1]);
-        client.publish("id", msg);
-        }
-      
-      ic = 1; id[0] = millis();
+ //     ddc=0;
+
+//      int sumt=0;
+//      for (i = 1; i < ic; i++)
+//        {
+//        sprintf(msg, "i:%3d t:%d ha:%3d frame:%4d dt:%4d", i, id[i], idl[i], ifc[i], id[i] - id[i - 1]);
+//        sumt += (id[i] - id[i - 1]);
+//        client.publish("id", msg);
+//        }
+//      
+//      ic = 1; id[0] = millis();
+//
+//      sprintf(msg, "sumt: %d", sumt);
+//      client.publish("info", msg);
 
       sprintf(msg, "%d", (bytecounter * 1000) / (milli - timer1));
       client.publish("bytecounter", msg);
@@ -657,7 +654,10 @@ void loop() {
       sprintf(msg, "%d", Kessel.Hauptantriebzeit/1000);
       client.publish("Hauptantriebzeit", msg);
 
-      sprintf(msg, "%d",(int)( (double)(Kessel.Hauptantriebzeit/1000)*HAfaktor));
+      sprintf(msg, "%2.1f", (double) Kessel.Hauptantriebtakt/1000.0);
+      client.publish("Hauptantriebtakt", msg);
+
+      sprintf(msg, "%d",(int)( (((double)Kessel.Hauptantriebzeit)*HAfaktor)/1000));
       client.publish("PelletsHA", msg);
       
 

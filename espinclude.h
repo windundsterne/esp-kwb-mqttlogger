@@ -203,7 +203,7 @@ int readframe(unsigned char anData[], int &nID, int &nDataLen, int &fid, int &er
     // Statistik fehlerhafte Frames
     errorcounter++;
     error=1;
-    return 1; // return 0 ; 
+    return 0 ; 
     
   }
 
