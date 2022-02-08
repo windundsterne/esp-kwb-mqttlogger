@@ -491,9 +491,9 @@ void loop() {
 
     if (nID == 33)
     {
-      mqttreconnect();
-      sprintf(msg, "10:%5.0f HA12:%5.0f", getval2(anData, 10, 2, 10, 0), getval2(anData, 12, 2, 10, 0)    );
-      client.publish("sensedata", msg);
+//      mqttreconnect();
+//      sprintf(msg, "10:%5.0f HA12:%5.0f", getval2(anData, 10, 2, 10, 0), getval2(anData, 12, 2, 10, 0)    );
+//      client.publish("sensedata", msg);
 
 
       //      for (int j = 0; j <= 20; j = j + 5)
@@ -654,7 +654,7 @@ void loop() {
       //client.publish("Hauptantriebtakt", msg);
 
       sprintf(msg, "%d", (int)( (((double)Kessel.Hauptantriebzeit)*HAfaktor) / 1000));
-      client.publish("PelletsHA", msg);
+      client.publish("Pellets", msg);
 
 
       //sprintf(msg, "%d", (int)((float)Kessel.HauptantriebUD * UDfaktor ) ); //  Gramm/UD * UD
@@ -666,7 +666,7 @@ void loop() {
       // Messung Über Schneckenantrieb
       sprintf(msg, "%d", (int)(((float)Kessel.Schneckengesamtlaufzeit * NAfaktor)  ));
 
-      client.publish("Pellets", msg);
+      client.publish("PelletsNA", msg);
 
       // akt Verbrauch berechnen
       if (Kessel.HauptantriebUD - UD)
@@ -783,22 +783,19 @@ void loop() {
         client.publish("Rauchgastemperatur", msg);
       }
 
-      if (Kessel.Saugzug != oKessel.Saugzug)
+      if ((Kessel.Saugzug != oKessel.Saugzug ) || (Kessel.Geblaese != oKessel.Geblaese))
       {
-        sprintf(msg, "%.0f", Kessel.Saugzug);
+        sprintf(msg, "%.0f / %.0f", Kessel.Saugzug,Kessel.Geblaese);
         client.publish("Saugzug", msg);
         sprintf(msg, "%.1f", Kessel.Unterdruck );
         client.publish("Unterdruck", msg);
-      }
-      if (Kessel.Geblaese != oKessel.Geblaese)
-      {
-        sprintf(msg, "%.0f", Kessel.Geblaese);
-        client.publish("Geblaese", msg);
+        
         if (Kessel.Geblaese > 10.0)
           client.publish("Kessel", "brennt");
         else
           client.publish("Kessel", "aus");
       }
+     
 
       sprintf(msg, "%d", Kessel.ext);
       client.publish("Anforderung", msg);
