@@ -47,6 +47,8 @@
 #define INTOPIC "cmd"
 #define MQNAME "kwb"
 
+#define LEISTUNGKESSEL 25.0 // KW bei 100 %
+#define TAKT100  (12.5 / 5.0)            // Taktung bei 100% Leistung 5s Laufzeit auf 12.5 sek 
 
 // Ende Individualisierungen
 
@@ -126,10 +128,7 @@ int HAimp = 0;
 // nied Fallrohrstand 160UD auf 200gr = 1.25
 // Nebenantrieb/Schnecke: 1990gr mit 373 s = 5.33gr/s
 
-double lfaktor = 1.0; // Umrechnung Leistung
 
-double UDfaktor = 1.49; // gr Pellet pro UD HA
-double UDsek =  1.73; // 2.45; // Umdrechungen HA / sek
 double NAfaktor = 5.4;
 double HAfaktor = (400.0 / 128.0) ; // // 400g in 120sek. > 3.333 g/s
 
@@ -147,13 +146,13 @@ unsigned long kwhtimer = 0; // Zeit seit letzer KW Messung
 struct ef2
 {
   double kwh = 0.1;
-  double Leistung = 0.1;
   double Rauchgastemperatur = 0.0;
   double Proztemperatur = 0.0;
   double Unterdruck = 0.0;
   double Brennerstunden = 0.0;
   double Kesseltemperatur = 0.0;
   double Geblaese = 0.0;
+  double Leistung = 0.0; 
   double Saugzug = 0.0;
   int  Reinigung = 0;
   int Zuendung = 0;
@@ -293,9 +292,6 @@ void setup() {
   sprintf(msg, "%d", updatemin );
   client.publish("updatemin", msg);
 
-  sprintf(msg, "%.4f", UDfaktor );
-  client.publish("UDfaktor", msg);
-
   sprintf(msg, "%.3f", 0);
   client.publish("kwh", msg);
 
@@ -370,7 +366,6 @@ void loop() {
 
     if (nID == 33)
     {
-      Kessel.Leistung = lfaktor *  getval2(anData, 12, 2, 0.05, 0);
       Kessel.Pumpepuffer = getbit(anData, 2, 7);
       Kessel.Zuendung = getbit(anData, 16, 2);
       Kessel.KeineStoerung = getbit(anData, 3, 0);
@@ -656,13 +651,6 @@ void loop() {
       sprintf(msg, "%d", (int)( (((double)Kessel.Hauptantriebzeit)*HAfaktor) / 1000));
       client.publish("Pellets", msg);
 
-
-      //sprintf(msg, "%d", (int)((float)Kessel.HauptantriebUD * UDfaktor ) ); //  Gramm/UD * UD
-   
-
-      // Gesamtverbrauch in GR
-      //client.publish("PelletsUDHA", msg);
-
       // Messung Über Schneckenantrieb
       sprintf(msg, "%d", (int)(((float)Kessel.Schneckengesamtlaufzeit * NAfaktor)  ));
 
@@ -679,16 +667,15 @@ void loop() {
         sprintf(msg, "%d", p);
         client.publish("deltaPelletsh", msg);
 
-        sprintf(msg, "%2.1f", 25.0 * 12500.0 / 5000.0 * ((double) ( Kessel.Hauptantriebzeit - ZD)) / ((double) (milli - timerd) ));
+        Kessel.Leistung = LEISTUNGKESSEL * TAKT100 * ((double) ( Kessel.Hauptantriebzeit - ZD)) / ((double) (milli - timerd)) ;
+        sprintf(msg, "%2.1f", Kessel.Leistung);
         client.publish("Leistung", msg);
         
-
-        //sprintf(msg, "%d", p);
-        //client.publish("deltaPelletsHA", msg);
-        //sprintf(msg, "%d", d);
-        //sprintf(msg, "%d", (int)(d * UDfaktor));
-        //client.publish("deltaPelletsUDHAh", msg);
-
+        if (Kessel.Leistung < 1.0 )
+        {
+          client.publish("deltaPelletsh", "0");
+        }
+        
 
 
         // Verbrauch pro Stunde gemessen über NA
@@ -735,17 +722,9 @@ void loop() {
         client.publish("Stoerung", msg);
       }
 
-      if (Kessel.Leistung != oKessel.Leistung )
-      {
 
-        oKessel.Leistung = Kessel.Leistung;
-        // sprintf(msg, "%.1f", Kessel.Leistung);
-        // client.publish("Leistung", msg);
-        if (Kessel.Leistung < 1.0 )
-        {
-          client.publish("deltaPelletsh", "0");
-        }
-      }
+      oKessel.Leistung = Kessel.Leistung;
+
 
       if (Kessel.kwh != oKessel.kwh)
       {
