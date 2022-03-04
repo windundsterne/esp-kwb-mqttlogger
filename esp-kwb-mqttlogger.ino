@@ -373,7 +373,6 @@ void loop() {
       Kessel.Drehrost = getbit(anData, 3, 6);
       Kessel.Raumaustragung = getbit(anData, 9, 2);
       Kessel.RLAVentil = getbit(anData, 2, 3);
-
       Kessel.Hauptantrieb = getval2(anData, 12, 2, 10, 0);
       Kessel.Hauptantriebtakt = getval2(anData, 10, 2, 10, 0);
 
@@ -395,7 +394,7 @@ void loop() {
 
       // Hauptantrieb Range:  0 .. Kessel.Hauptantriebtakt
 
-      if (Kessel.Hauptantriebtakt != 0 )
+      if (oKessel.Hauptantriebtakt != 0 )
       {
         Kessel.Hauptantriebzeit += (oKessel.Hauptantrieb * (milli - timerHA)) / (oKessel.Hauptantriebtakt);
       }
@@ -492,13 +491,13 @@ void loop() {
 
 
       //      for (int j = 0; j <= 20; j = j + 5)
-      //      {
+      //      { // String der inttibins sollte noch deleted werden
       //        sprintf(msg, "t:%4d id:%3d: %3d %s %s %s %s %s %2d", milli / 1000, frameid, j, inttobin(anData[j]), inttobin(anData[j + 1]), inttobin(anData[j + 2]), inttobin(anData[j + 3]), inttobin(anData[j + 4]), nDataLen);
       //        client.publish("sensedata", msg);
       //      }
 
       //       int j=4;
-      //
+      //         // String der inttibins sollte noch deleted werden
       //       sprintf(msg, "t:%4d id:%3d: %3d %s %s %s %s %s %2d", milli / 1000, frameid, j, inttobin(anData[j]), inttobin(anData[j + 1]), inttobin(anData[j + 2]), inttobin(anData[j + 3]), inttobin(anData[j + 4]), nDataLen);
       //       client.publish("sensedata", msg);
 
