@@ -29,6 +29,11 @@ Die erste Version nutzte pin2 des Wemos, um über einen SoftwareSerial Daten des
 Materialkosten liegen bei ca. 15€ 
 
 <Bildlogger>![PXL_20201004_160445885.jpg](https://github.com/windundsterne/esp-kwb-mqttlogger/blob/main/Bilder/PXL_20201004_160445885.jpg?raw=true)
+    
+   
+Anbei ein kleiner Schaltplan mit dem sowohl die Sofwareserial als auf der UART genutzt werden kann. Die Uart-Variante benötigt gefühlt etwas weniger CPU und eine etwas weniger CRC Fehler. Wenn der //#define SWSERIAL 2 auskommentiert ist wird der UART genutzt (default)
+    
+ <Scchaltplan>![Schaltplan.png](https://github.com/windundsterne/esp-kwb-mqttlogger/blob/main/Bilder/Schaltplan.png?raw=true) 
 
 ## Software:
 
