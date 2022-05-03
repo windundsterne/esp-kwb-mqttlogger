@@ -129,7 +129,7 @@ int HAimp = 0;
 // Nebenantrieb/Schnecke: 1990gr mit 373 s = 5.33gr/s
 
 
-double NAfaktor = 5.4;
+double NAfaktor = (5.4*1.29);
 double HAfaktor = (400.0 / 128.0) ; // // 400g in 120sek. > 3.333 g/s
 
 unsigned long count = 0;
@@ -347,6 +347,7 @@ void loop() {
   char msg[500], data[500];
   int nID;;
   int i, r ;
+  int p1=0,p2=0;
   int value;
   unsigned long  milli = 0;
   int frameid, error;
@@ -405,7 +406,7 @@ void loop() {
       oKessel.Hauptantriebtakt = Kessel.Hauptantriebtakt;
 
 
-      if (Kessel.Leistung > 1) {
+      if (Kessel.Geblaese > 10) {
         Kessel.Brennerstunden += deltat; // Wenn der Kessel läuft
       }
       Kessel.kwh += Kessel.Leistung * deltat;
@@ -416,6 +417,8 @@ void loop() {
     // Sense Paket empfangen
     if (nID == 32)
     {
+      p1=anData[32];
+      p2=anData[33];
       Kessel.photo =  getval2(anData, 32, 2, 0.1, 1);
       Kessel.Kesseltemperatur = getval2(anData, 12, 2, 0.1, 1);
       Kessel.Rauchgastemperatur = getval2(anData, 20, 2, 0.1, 1);
@@ -448,6 +451,13 @@ void loop() {
       } // Impulsende
 
       oKessel.Hauptantriebimpuls = Kessel.Hauptantriebimpuls;
+
+      // Wenn das Gebläse ausgeht ist auch Leistung auf 0 setzen, 
+      // damit auch Brennerstunden korrekt berechnet werden 
+        if ((Kessel.Geblaese == 0) && (oKessel.Geblaese > 10) )
+          Kessel.Leistung=0;
+
+          
 
     } // Ende Sense Paket auslesen
 
@@ -771,7 +781,12 @@ void loop() {
         if (Kessel.Geblaese > 10.0)
           client.publish("Kessel", "brennt");
         else
+          {
           client.publish("Kessel", "aus");
+          client.publish("Leistung", "0");
+          }
+
+
       }
      
 
@@ -782,6 +797,11 @@ void loop() {
       {
         sprintf(msg, "%d", ((int) (Kessel.photo + 255.0) * 100) >> 9);
         client.publish("photodiode", msg);
+        sprintf(msg, "%d", ((int) (Kessel.photo )));
+        client.publish("photodioderaw", msg);
+        sprintf(msg, "%s %s", inttobin(p1),inttobin(p2) );
+        client.publish("photodiodebin",msg );
+        
       }
 
       memcpy(&oKessel, &Kessel, sizeof Kessel);
