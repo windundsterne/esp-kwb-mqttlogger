@@ -53,9 +53,9 @@
 // Ende Individualisierungen
 
 
-#include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>
-#include <WiFiUdp.h>
+//#include <ESP8266WiFi.h>
+//#include <ESP8266mDNS.h>
+//#include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #include <PubSubClient.h>
 #include <stdio.h>
@@ -81,7 +81,7 @@ long SL = 0 ; // Schneckenlaufzeit
 long ZD = 0;
 int updatemin = 5 ;
 long UDtimer = 0;
-long HANAtimer = 0; // Timer zur Ausgabe der HANA Ratio
+long unsigned HANAtimer = 0; // Timer zur Ausgabe der HANA Ratio
 long NAz = 0, HAz = 0;
 
 int wifistatus = 0;
@@ -142,6 +142,7 @@ unsigned long timerschnecke = 0;
 unsigned long timerpause = 0;
 unsigned long timerHA = 0 ;
 unsigned long kwhtimer = 0; // Zeit seit letzer KW Messung
+int led=1; // Blaue Led Status
 
 struct ef2
 {
@@ -151,7 +152,7 @@ struct ef2
   double Unterdruck = 0.0;
   double Brennerstunden = 0.0;
   double Kesseltemperatur = 0.0;
-  double Geblaese = 0.0;
+  double Geblaese = 0.1;  // damit initial Staus ausgegeben wird
   double Leistung = 0.0; 
   double Saugzug = 0.0;
   int  Reinigung = 0;
@@ -167,7 +168,8 @@ struct ef2
   unsigned long  Hauptantriebzeit = 1; // Gesamt HAzeit in millisekunden
   unsigned long  Hauptantriebtakt = 1; // Taktzeit in millisekunden
   int Pumpepuffer = 0;
-  int RLAVentil = 0;
+  int RLAVentilauf = 0;
+  int RLAVentilzu = 0;
   int ext = 1;
   double d[10];
   double photo = 0.0;
@@ -343,12 +345,9 @@ void setup() {
 void loop() {
   unsigned char anData[256];
   int nDataLen;
-  int byte;
-  char msg[500], data[500];
+  char msg[500];
   int nID;;
-  int i, r ;
-  int p1=0,p2=0;
-  int value;
+ 
   unsigned long  milli = 0;
   int frameid, error;
 
@@ -362,18 +361,36 @@ void loop() {
   {
     milli = millis();
 
+    // Led alternate bei Paketempfang
+
+    pinMode(ledPin, OUTPUT);
+    
+    if(++led==2) {
+      led=0;
+      digitalWrite(ledPin, LOW);
+      }
+    else
+      digitalWrite(ledPin, HIGH);
+    
     ///////////////////////////////////
     // Control MSG  / Von Bediengerät an Kessel
 
     if (nID == 33)
     {
-      Kessel.Pumpepuffer = getbit(anData, 2, 7);
+      // Kessel.Pumpepuffer = getbit(anData, 2, 7);
+      Kessel.Pumpepuffer = getval2(anData, 8, 1, 100.0/255.0, 0);
       Kessel.Zuendung = getbit(anData, 16, 2);
       Kessel.KeineStoerung = getbit(anData, 3, 0);
       Kessel.Reinigung = getbit(anData, 3, 7);
       Kessel.Drehrost = getbit(anData, 3, 6);
       Kessel.Raumaustragung = getbit(anData, 9, 2);
-      Kessel.RLAVentil = getbit(anData, 2, 3);
+
+      // Byte 2 Bit3 Motor läuft
+      // Byte 2 Bit4 =1 auf =0 zu
+
+      Kessel.RLAVentilzu = getbit(anData, 2, 3) & (getbit(anData, 2, 4) == 1);
+      Kessel.RLAVentilauf  = getbit(anData, 2, 3) & (getbit(anData, 2, 4) == 0);
+
       Kessel.Hauptantrieb = getval2(anData, 12, 2, 10, 0);
       Kessel.Hauptantriebtakt = getval2(anData, 10, 2, 10, 0);
 
@@ -417,8 +434,6 @@ void loop() {
     // Sense Paket empfangen
     if (nID == 32)
     {
-      p1=anData[32];
-      p2=anData[33];
       Kessel.photo =  getval2(anData, 32, 2, 0.1, 1);
       Kessel.Kesseltemperatur = getval2(anData, 12, 2, 0.1, 1);
       Kessel.Rauchgastemperatur = getval2(anData, 20, 2, 0.1, 1);
@@ -495,12 +510,12 @@ void loop() {
 
     if (nID == 33)
     {
-//      mqttreconnect();
-//      sprintf(msg, "10:%5.0f HA12:%5.0f", getval2(anData, 10, 2, 10, 0), getval2(anData, 12, 2, 10, 0)    );
-//      client.publish("sensedata", msg);
+     // mqttreconnect();
+     //      sprintf(msg, "10:%5.0f HA12:%5.0f", getval2(anData, 10, 2, 10, 0), getval2(anData, 12, 2, 10, 0)    );
+     // client.publish("controldata", msg);
 
 
-      //      for (int j = 0; j <= 20; j = j + 5)
+      //      for (int j = 0; j <= 15; j = j + 5)
       //      { // String der inttibins sollte noch deleted werden
       //        sprintf(msg, "t:%4d id:%3d: %3d %s %s %s %s %s %2d", milli / 1000, frameid, j, inttobin(anData[j]), inttobin(anData[j + 1]), inttobin(anData[j + 2]), inttobin(anData[j + 3]), inttobin(anData[j + 4]), nDataLen);
       //        client.publish("sensedata", msg);
@@ -536,6 +551,35 @@ void loop() {
     oKessel.Raumaustragung = Kessel.Raumaustragung;
 
   }
+
+//  if (Kessel.Pumpepuffer != oKessel.Pumpepuffer)
+//      {
+//        mqttreconnect();
+//        sprintf(msg, "%d", Kessel.Pumpepuffer );
+//        client.publish("Pumpepuffer", msg);
+//        oKessel.Pumpepuffer = Kessel.Pumpepuffer;
+//      }
+
+//  if (Kessel.RLAVentilauf != oKessel.RLAVentilauf)
+//      {
+//        mqttreconnect();
+//        sprintf(msg, "%d", Kessel.RLAVentilauf );
+//        client.publish("RLAVentilauf", msg);
+//        oKessel.RLAVentilauf=Kessel.RLAVentilauf;
+//      }
+  
+//  if (Kessel.RLAVentilzu != oKessel.RLAVentilzu)
+//      {
+//        mqttreconnect();
+//        sprintf(msg, "%d", Kessel.RLAVentilzu );
+//        client.publish("RLAVentilzu", msg);
+//        oKessel.RLAVentilzu=Kessel.RLAVentilzu;
+//      }
+
+
+
+
+  
   // braucht man nicht wirklich immer im Log
   //    if (Kessel.Drehrost != oKessel.Drehrost)
   //      {
@@ -748,11 +792,6 @@ void loop() {
       }
 
 
-      if (Kessel.Pumpepuffer != oKessel.Pumpepuffer)
-      {
-        sprintf(msg, "%d", Kessel.Pumpepuffer );
-        client.publish("Pumpepuffer", msg);
-      }
 
       if (Kessel.Raumaustragung != oKessel.Raumaustragung)
       {
@@ -797,10 +836,10 @@ void loop() {
       {
         sprintf(msg, "%d", ((int) (Kessel.photo + 255.0) * 100) >> 9);
         client.publish("photodiode", msg);
-        sprintf(msg, "%d", ((int) (Kessel.photo )));
-        client.publish("photodioderaw", msg);
-        sprintf(msg, "%s %s", inttobin(p1),inttobin(p2) );
-        client.publish("photodiodebin",msg );
+        //sprintf(msg, "%d", ((int) (Kessel.photo )));
+        //client.publish("photoraw", msg);
+        //sprintf(msg, "%s %s %d %d", inttobin(p1),inttobin(p2),(int) p1, (int) p2 );
+        //client.publish("photobin",msg );
         
       }
 
