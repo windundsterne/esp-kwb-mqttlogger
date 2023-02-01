@@ -128,9 +128,16 @@ int HAimp = 0;
 // nied Fallrohrstand 160UD auf 200gr = 1.25
 // Nebenantrieb/Schnecke: 1990gr mit 373 s = 5.33gr/s
 
+// 21.11.22 Messung Nebenantrien-Schnecke
+// 6056gr 940s -> 6,44255319 gr/s (gemessen 931s) 
+// Winter 21/22 -> 6,966 gr/s
+// 3,125  HAFaktor bis zum 21.  (*1.117 auf verk HA/NA) 
+// 3,4909 HAfaktor
+// 
 
-double NAfaktor = (5.4*1.29);
-double HAfaktor = (400.0 / 128.0) ; // // 400g in 120sek. > 3.333 g/s
+
+double NAfaktor = (6056.0 / 940.0);
+double HAfaktor = (1.117 * 400.0 / 128.0) ; // // 400g in 120sek. > 3.333 g/s
 
 unsigned long count = 0;
 unsigned long bytecount = 0;
@@ -293,6 +300,12 @@ void setup() {
 
   sprintf(msg, "%d", updatemin );
   client.publish("updatemin", msg);
+
+  sprintf(msg, "%f", NAfaktor );
+  client.publish("NAfaktor", msg);
+
+  sprintf(msg, "%f", HAfaktor );
+  client.publish("HAfaktor", msg);
 
   sprintf(msg, "%.3f", 0);
   client.publish("kwh", msg);
